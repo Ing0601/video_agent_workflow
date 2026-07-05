@@ -1,191 +1,175 @@
-# General Video LangGraph Backend
+# Video Agent Console
 
-LangGraph-based backend for video highlight extraction and commentary/ad video generation workflows.
+`Video Agent Console` 是一个轻量级的视频处理后端与控制台项目，支持视频高光分析、解说词/广告文案生成、以及会话历史存储与摘要管理。
 
-这个目录是独立重构项目，不修改原来的 `General_Video_Agent`。
+## 项目简介
 
-## 当前实现范围
+本项目提供以下核心能力：
 
-### 1. 高光视频片段批量剪辑
-
-LangGraph 节点：
-
-```text
-init_task
-  -> collect_videos
-  -> asr_transcribe
-  -> content_clip
-  -> split_and_group
-  -> vlm_analyze
-  -> select_highlights
-  -> save_highlight_result
-  -> maybe_generate_draft
-  -> finish
-```
-
-高光线复用了原项目已有能力：
-
-```text
-VideoCollector
-ASRTranscriber
-ContentClipper
-VideoSplitter
-SubtitleGrouper
-SegmentAnalyzer
-ShortDramaProcessor
-```
-
-### 2. 解说词 / 信息流广告二次创作
-
-LangGraph 节点：
-
-```text
-init_task
-  -> analyze_material
-  -> generate_script
-  -> synthesize_tts
-  -> check_tts_duration
-  -> align_video_info
-  -> generate_bgm
-  -> generate_overlay
-  -> generate_sound
-  -> create_jianying_draft
-  -> finish
-```
-
-第一版支持 `demo_info/template` 模式。直接输入视频后自动做 ASR/VLM 素材理解的模式还没有接入。
-
-为了先跑通 LangGraph 后端链路，解说词线里的 TTS 和剪映草稿生成目前是 stub：
-
-```text
-synthesize_tts_stub: 生成可预测 timestamps 和占位音频文件
-create_commentary_draft_stub: 生成 draft_manifest.json
-```
-
-后续接真实字节 TTS / CosyVoice / Jianying converter 时，只需要替换 service，不需要改 graph 结构。
+- 视频高光分析与结果输出
+- 解说词/广告文案生成与 TTS 时间轴支持
+- 会话历史保存与摘要归档
+- 简洁前端控制台用于触发工作流和查看执行进度
 
 ## 目录结构
 
 ```text
-src/
-  api/
-    app.py
-    schemas.py
-    server.py
-
-  services/
-    highlight_service.py
-    commentary_service.py
-    draft_service.py
-
-  workflow/
-    graphs/
-      highlight_graph.py
-      commentary_graph.py
-    nodes/
-      highlight_nodes.py
-      commentary_nodes.py
-    runtime/
-      storage.py
-      events.py
-    states/
-      base_state.py
-      highlight_state.py
-      commentary_state.py
-    runners.py
+frontend/               # 前端静态页面与交互逻辑
+src/                    # 后端业务代码
+  api/                  # FastAPI 接口与请求定义
+  config/               # 环境配置与云存储初始化
+  logger/               # 日志初始化与输出配置
+  memory/               # 兼容旧引用路径的会话存储层
+  session_store/        # 会话存储核心实现
+  model/                # ASR、TTS、LLM 等模型服务封装
+  workflow/             # 高光与解说词工作流实现
+  utils/                # 辅助工具函数
+main.py                 # 后端入口模块
+README.md               # 项目说明文档
+.gitignore              # 本地忽略文件配置
 ```
 
-## 启动
+## 功能说明
+
+### 高光分析
+
+通过 `POST /highlight_sse` 发起视频高光分析工作流。
+
+该工作流会接收视频输入，执行语音识别、帧分析、片段筛选等步骤，并采用 SSE 实时返回执行进度和结果。
+
+### 解说词生成
+
+通过 `POST /commentary_sse` 发起解说词/广告文案生成工作流。
+
+该流程支持结构化 `demo_info` 输入、用户需求定制、语音合成策略等，并采用 SSE 实时返回执行进度与结果。
+
+### 会话存储与摘要
+
+项目中的会话存储实现位于 `src/session_store`，用于：
+
+- 保存对话消息到数据库
+- 检查会话 token 使用阈值
+- 将对话历史压缩为摘要并写回存储
+
+该实现更像“会话历史存储与摘要服务”，而不是通用语义向量记忆库。
+
+## 环境变量
+
+项目支持通过 `.env` 文件读取环境变量。示例：
+
+```env
+DASHSCOPE_API_KEY=your_dashscope_api_key
+TOS_ACCESS_KEY=your_tos_access_key
+TOS_SECRET_KEY=your_tos_secret_key
+TOS_BUCKET_NAME=your_tos_bucket_name
+TOS_ENDPOINT=tos-cn-beijing.volces.com
+TOS_REGION=cn-beijing
+OPENAI_API_KEY=your_openai_api_key
+OPENAI_BASE_URL=https://api.your-openai-proxy.com/v1
+```
+
+> 请勿将实际密钥提交到公共仓库。
+
+如果不使用 `.env`，也可以直接在 shell 中导出环境变量。
+
+## 依赖安装
+
+建议使用虚拟环境：
 
 ```bash
-cd /Users/lxh/codebase/crengine/general_video_agent_v2/General_Video_LangGraph
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+如果使用 conda：
+
+```bash
+conda create -n video_agent python=3.11 -y
 conda activate video_agent
 pip install -r requirements.txt
+```
+
+## 启动后端
+
+```bash
 uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
-也可以使用：
+或：
 
 ```bash
 python -m src.api.server
 ```
 
-## API
-
-### 健康检查
+启动后可以访问：
 
 ```bash
 curl http://127.0.0.1:8000/healthz
 ```
 
+## API 参考
+
+### 健康检查
+
+- `GET /healthz`
+- `GET /health`
+
+返回示例：
+
+```json
+{ "msg": "OK" }
+```
+
 ### 高光分析
 
-```bash
-curl -N -X POST http://127.0.0.1:8000/highlight_sse \
-  -H "Content-Type: application/json" \
-  -d '{
-    "input_videos": ["/path/to/video.mp4"],
-    "output_base_dir": "/tmp/general_video_langgraph/highlight",
-    "fps": 1.0,
-    "max_workers": 3,
-    "save_intermediate": true
-  }'
+- `POST /highlight_sse`
+- 请求示例：
+
+```json
+{
+  "input_videos": ["/path/to/video.mp4"],
+  "output_base_dir": "/tmp/video_agent/highlight",
+  "fps": 1.0,
+  "max_workers": 3,
+  "save_intermediate": true,
+  "generate_draft": false
+}
 ```
 
-输出目录结构：
+### 解说词生成
 
-```text
-output_base_dir/
-  tasks/
-    {task_id}/
-      config.json
-      state.latest.json
-      intermediates/
-      outputs/
-        highlight_results.json
+- `POST /commentary_sse`
+- 请求示例：
+
+```json
+{
+  "input_videos": [],
+  "demo_info": [
+    {
+      "start": 0,
+      "end": 3,
+      "folder": "开头素材",
+      "subtitle": "她刚推开门，就发现气氛不对"
+    },
+    {
+      "start": 3,
+      "end": 8,
+      "folder": "冲突素材",
+      "subtitle": "丈夫的沉默让她意识到事情没有那么简单"
+    }
+  ],
+  "user_demand": "请用第三人称解说，突出冲突和反转",
+  "output_dir": "/tmp/video_agent/commentary",
+  "draft_name": "解说前贴",
+  "voice_type": "BV411_streaming",
+  "speed_ratio": 1.2
+}
 ```
 
-### 解说词 / 信息流广告
+## 前端使用
 
-```bash
-curl -N -X POST http://127.0.0.1:8000/commentary_sse \
-  -H "Content-Type: application/json" \
-  -d '{
-    "demo_info": [
-      {
-        "start": 0,
-        "end": 3,
-        "folder": "开头素材",
-        "subtitle": "她刚推开门，就发现气氛不对"
-      },
-      {
-        "start": 3,
-        "end": 8,
-        "folder": "冲突素材",
-        "subtitle": "丈夫的沉默让她意识到事情没有那么简单"
-      }
-    ],
-    "user_demand": "请用第三人称解说，突出冲突和反转",
-    "output_dir": "/tmp/general_video_langgraph/commentary",
-    "draft_name": "解说前贴",
-    "voice_type": "BV411_streaming",
-    "speed_ratio": 1.2
-  }'
-```
-
-第一版会生成：
-
-```text
-tasks/{task_id}/intermediates/material_summary.json
-tasks/{task_id}/intermediates/script_result.json
-tasks/{task_id}/intermediates/tts_result.json
-tasks/{task_id}/intermediates/video_info.json
-{output_dir}/{draft_name}/draft_manifest.json
-```
-
-## 前端页面
-
-静态前端位于：
+前端静态页面文件位于：
 
 ```text
 frontend/index.html
@@ -193,77 +177,35 @@ frontend/styles.css
 frontend/app.js
 ```
 
-启动后端：
+前端通过 SSE 调用后端接口，展示实时执行进度和结果。
+
+如果需要单独启动前端静态服务：
 
 ```bash
-cd /Users/lxh/codebase/crengine/general_video_agent_v2/General_Video_LangGraph
-conda activate video_agent
-uvicorn main:app --host 127.0.0.1 --port 8010
-```
-
-启动前端静态服务：
-
-```bash
-cd /Users/lxh/codebase/crengine/general_video_agent_v2/General_Video_LangGraph/frontend
+cd frontend
 python -m http.server 5173
 ```
 
-浏览器打开：
+然后访问：
 
 ```text
 http://127.0.0.1:5173/
 ```
 
-页面功能：
+## 发布到公共仓库
 
-```text
-高光分析：填写 input_videos、output_base_dir、fps、max_workers，调用 /highlight_sse。
-解说词生成：填写 demo_info、user_demand、voice、speed，调用 /commentary_sse。
-实时事件：展示 LangGraph 节点进度和 SSE 日志。
-最终结果：展示 final result，可复制。
-```
+请确保以下内容未包含在仓库中：
 
-## 验证状态
+- 真实 API 密钥
+- 数据库连接字符串
+- 本地路径或个人信息
+- `.env` 文件
 
-已经执行：
+推荐将实际密钥保存在本地 `.env` 中，并将 `.env` 添加到 `.gitignore`。
 
-```bash
-python -m compileall src main.py
-conda run -n video_agent python -c "from src.api.app import app; from src.workflow.graphs import build_highlight_graph, build_commentary_graph; build_highlight_graph(); build_commentary_graph(); print('ok')"
-```
+## 说明
 
-结果：语法编译和应用导入通过。
-
-已用 `video_agent` 环境完成 commentary stub graph smoke test，完整跑通：
-
-```text
-init_task
-  -> analyze_material
-  -> generate_script
-  -> synthesize_tts
-  -> check_tts_duration
-  -> align_video_info
-  -> generate_bgm
-  -> generate_overlay
-  -> generate_sound
-  -> create_jianying_draft
-  -> finish
-```
-
-并已启动服务验证：
-
-```bash
-conda run -n video_agent uvicorn main:app --host 127.0.0.1 --port 8010
-curl http://127.0.0.1:8010/healthz
-```
-
-返回：
-
-```json
-{"msg":"OK"}
-```
-
-## 后续建议
+本项目定位为一个“视频处理 + 文案生成”的轻量后端服务，提供结构化工作流触发、实时事件流显示和可扩展会话存储机制。
 
 优先级：
 
