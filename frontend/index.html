@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Video Agent Console</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">GV</div>
+          <div>
+            <div class="brand-title">Video Agent</div>
+            <div class="brand-subtitle">Workflow Console</div>
+          </div>
+        </div>
+
+        <nav class="nav">
+          <button class="nav-item active" data-tab="highlight">
+            <span class="nav-icon">H</span>
+            <span>高光分析</span>
+          </button>
+          <button class="nav-item" data-tab="commentary">
+            <span class="nav-icon">C</span>
+            <span>解说词生成</span>
+          </button>
+        </nav>
+
+        <div class="connection-panel">
+          <label for="apiBase">后端地址</label>
+          <input id="apiBase" value="http://127.0.0.1:8010" />
+          <button id="healthCheck" class="secondary-button">检查连接</button>
+          <div id="healthStatus" class="status-text">未检查</div>
+        </div>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <h1 id="pageTitle">高光分析</h1>
+            <p id="pageDescription">调用视频处理 workflow，实时查看节点进度和最终结果。</p>
+          </div>
+          <div class="run-state" id="runState">Idle</div>
+        </header>
+
+        <section id="highlightPanel" class="task-panel active">
+          <div class="workflow-tabs">
+            <button class="mini-tab active" type="button">高光分析</button>
+            <button class="mini-tab" type="button">草稿配置</button>
+            <button class="mini-tab" type="button">素材增强</button>
+          </div>
+
+          <div class="layout-grid">
+            <form id="highlightForm" class="form-surface">
+              <div class="form-section">
+                <div class="section-title">基础输入</div>
+
+                <label>
+                  视频文件或目录
+                  <textarea
+                    id="highlightInputVideos"
+                    rows="5"
+                    placeholder='支持 JSON 数组、单个文件路径或目录路径。例如：["/path/a.mp4", "/path/b.mp4"]'
+                  ></textarea>
+                </label>
+
+                <div class="two-col">
+                  <label>
+                    分析结果输出目录
+                    <input id="highlightOutputDir" placeholder="/tmp/general_video_langgraph/highlight" />
+                  </label>
+                  <label>
+                    VLM 抽帧 FPS
+                    <input id="highlightFps" type="number" min="0.05" step="0.05" value="1.0" />
+                  </label>
+                </div>
+
+                <div class="three-col">
+                  <label>
+                    视频并发数
+                    <input id="highlightWorkers" type="number" min="1" step="1" value="3" />
+                  </label>
+                  <label>
+                    片段 VLM 并发
+                    <input id="highlightSegmentWorkers" type="number" min="1" step="1" value="3" />
+                  </label>
+                  <label>
+                    选择批大小
+                    <input id="highlightSelectionBatch" type="number" min="1" step="1" value="5" />
+                  </label>
+                </div>
+              </div>
+
+              <div class="form-section">
+                <div class="section-title">剪映草稿配置</div>
+
+                <div class="three-col">
+                  <label>
+                    视频比例
+                    <select id="highlightVideoRatio">
+                      <option value="1.0">9:16 竖屏</option>
+                      <option value="1.7778">16:9 横屏</option>
+                    </select>
+                  </label>
+                  <label>
+                    目标时长
+                    <select id="highlightGoalTimes">
+                      <option value="120,150,180">短时长 120,150,180</option>
+                      <option value="180,240,300" selected>标准 180,240,300</option>
+                      <option value="240,300,360">长时长 240,300,360</option>
+                    </select>
+                  </label>
+                  <label>
+                    全局速度
+                    <input id="highlightGlobalSpeed" type="number" min="0.5" max="2" step="0.05" value="1.1" />
+                  </label>
+                </div>
+
+                <div class="two-col">
+                  <label>
+                    草稿输出目录
+                    <input id="highlightDraftOutputDir" placeholder="/tmp/general_video_langgraph/highlight_draft" />
+                  </label>
+                  <label>
+                    草稿名称
+                    <input id="highlightDraftName" value="高光剪辑" />
+                  </label>
+                </div>
+
+                <div class="three-col">
+                  <label>
+                    宽度
+                    <input id="highlightWidth" type="number" value="1080" />
+                  </label>
+                  <label>
+                    高度
+                    <input id="highlightHeight" type="number" value="1920" />
+                  </label>
+                  <label>
+                    FPS
+                    <input id="highlightDraftFps" type="number" value="30" />
+                  </label>
+                </div>
+
+                <div class="two-col">
+                  <label>
+                    素材基础路径
+                    <input id="highlightMaterialBasePath" placeholder="可选：视频素材目录" />
+                  </label>
+                  <label>
+                    平台
+                    <select id="highlightPlatform">
+                      <option value="mac">mac</option>
+                      <option value="win">win</option>
+                    </select>
+                  </label>
+                </div>
+
+                <div class="toggle-row">
+                  <label class="checkbox-label compact">
+                    <input id="highlightGenerateDraft" type="checkbox" />
+                    分析完成后生成剪映草稿
+                  </label>
+                  <label class="checkbox-label compact">
+                    <input id="highlightSaveIntermediate" type="checkbox" checked />
+                    保存中间结果
+                  </label>
+                </div>
+              </div>
+
+              <div class="form-section">
+                <div class="section-title">素材增强</div>
+                <div class="two-col">
+                  <label>
+                    角标文件
+                    <textarea id="highlightCornerBadges" rows="3" placeholder='JSON 数组，例如：["/path/badge.png"]'></textarea>
+                  </label>
+                  <label>
+                    尾帧文件
+                    <textarea id="highlightTailFrames" rows="3" placeholder='JSON 数组，例如：["/path/end.mp4"]'></textarea>
+                  </label>
+                </div>
+                <label>
+                  文字模板配置
+                  <textarea id="highlightTextTemplate" rows="3" placeholder="预留：全局文字、字幕模板、贴片文字等 JSON"></textarea>
+                </label>
+              </div>
+
+              <div class="action-row">
+                <button type="button" class="secondary-button" id="fillHighlightExample">填充示例</button>
+                <button type="submit" class="primary-button">开始高光分析</button>
+              </div>
+            </form>
+
+            <div class="side-surface">
+              <div class="section-title">请求预览</div>
+              <pre id="highlightPreview" class="code-preview"></pre>
+            </div>
+          </div>
+        </section>
+
+        <section id="commentaryPanel" class="task-panel">
+          <div class="layout-grid">
+            <form id="commentaryForm" class="form-surface">
+              <div class="form-section">
+                <div class="section-title">素材与模板</div>
+
+                <label>
+                  输入视频
+                  <textarea id="commentaryInputVideos" rows="3" placeholder='可选，预留直接视频理解模式。例如：["/path/video.mp4"]'></textarea>
+                </label>
+
+                <label>
+                  Demo Info JSON
+                  <textarea
+                    id="commentaryDemoInfo"
+                    rows="8"
+                    placeholder="请输入 demo_info JSON 数组"
+                  ></textarea>
+                </label>
+
+                <label>
+                  文字模板配置
+                  <textarea id="commentaryTextTemplate" rows="3" placeholder="预留：解说模板、字幕样式、结构约束等 JSON"></textarea>
+                </label>
+              </div>
+
+              <div class="form-section">
+                <div class="section-title">解说设置</div>
+
+                <label>
+                  解说风格
+                  <select id="commentaryDemandPreset">
+                    <option value="请用第三人称解说">第三人称叙事</option>
+                    <option value="请按剧情发展清晰解说">剧情梳理风格</option>
+                    <option value="请用快节奏方式进行高能解说">快节奏高能风格</option>
+                    <option value="请突出产品卖点并引导下载">信息流广告口播</option>
+                  </select>
+                </label>
+
+                <label>
+                  用户需求
+                  <input id="commentaryDemand" value="请用第三人称解说，突出冲突和反转" />
+                </label>
+
+                <div class="four-col">
+                  <label>
+                    音色
+                    <select id="commentaryVoice">
+                      <option value="BV411_streaming">BV411_streaming</option>
+                      <option value="BV700_streaming">BV700_streaming</option>
+                      <option value="BV001_streaming">BV001_streaming</option>
+                    </select>
+                  </label>
+                  <label>
+                    语速
+                    <select id="commentarySpeed">
+                      <option value="1.0">慢速 1.0</option>
+                      <option value="1.2" selected>标准 1.2</option>
+                      <option value="1.4">快速 1.4</option>
+                    </select>
+                  </label>
+                  <label>
+                    分析 FPS
+                    <input id="commentaryFps" type="number" min="0.05" step="0.05" value="0.5" />
+                  </label>
+                  <label>
+                    匹配阈值
+                    <input id="commentaryOverlap" type="number" min="0" max="1" step="0.05" value="0.5" />
+                  </label>
+                </div>
+              </div>
+
+              <div class="form-section">
+                <div class="section-title">目录与草稿</div>
+
+                <div class="two-col">
+                  <label>
+                    工作目录
+                    <input id="commentaryWorkDir" placeholder="留空则使用输出目录" />
+                  </label>
+                  <label>
+                    输出目录
+                    <input id="commentaryOutputDir" placeholder="/tmp/general_video_langgraph/commentary" />
+                  </label>
+                </div>
+
+                <div class="three-col">
+                  <label>
+                    草稿名称
+                    <input id="commentaryDraftName" value="解说前贴" />
+                  </label>
+                  <label>
+                    目标时长
+                    <input id="commentaryTargetDuration" type="number" min="1" step="1" placeholder="可选" />
+                  </label>
+                  <label>
+                    对齐策略
+                    <select id="commentaryStrategy">
+                      <option value="video_fit_audio">视频适配配音</option>
+                      <option value="audio_fit_video">配音适配视频</option>
+                    </select>
+                  </label>
+                </div>
+              </div>
+
+              <div class="form-section">
+                <div class="section-title">素材增强</div>
+                <div class="two-col">
+                  <label>
+                    角标文件
+                    <textarea id="commentaryCornerBadges" rows="3" placeholder='JSON 数组，例如：["/path/badge.png"]'></textarea>
+                  </label>
+                  <label>
+                    尾帧文件
+                    <textarea id="commentaryTailFrames" rows="3" placeholder='JSON 数组，例如：["/path/end.png"]'></textarea>
+                  </label>
+                </div>
+              </div>
+
+              <div class="action-row">
+                <button type="button" class="secondary-button" id="fillCommentaryExample">填充示例</button>
+                <button type="submit" class="primary-button">开始生成</button>
+              </div>
+            </form>
+
+            <div class="side-surface">
+              <div class="section-title">请求预览</div>
+              <pre id="commentaryPreview" class="code-preview"></pre>
+            </div>
+          </div>
+        </section>
+
+        <section class="runtime-grid">
+          <div class="runtime-surface">
+            <div class="runtime-header">
+              <div class="section-title">实时事件</div>
+              <button id="clearLog" class="icon-button" title="清空日志">Clear</button>
+            </div>
+            <div id="eventLog" class="event-log"></div>
+          </div>
+
+          <div class="runtime-surface">
+            <div class="runtime-header">
+              <div class="section-title">最终结果</div>
+              <button id="copyResult" class="icon-button" title="复制结果">Copy</button>
+            </div>
+            <pre id="resultBox" class="result-box">暂无结果</pre>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

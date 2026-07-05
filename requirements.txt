@@ -1,0 +1,33 @@
+# ===== web server =====
+fastapi
+uvicorn[standard]
+uvloop; sys_platform != "win32"
+
+# ===== workflow =====
+langgraph
+
+# ===== AI / LLM =====
+dashscope
+litellm
+
+# ===== media =====
+pymediainfo
+imageio
+pillow
+uiautomation>=2
+
+# ===== storage / network =====
+requests
+tenacity
+tos
+
+# ===== data / model =====
+pydantic
+
+# ===== database =====
+sqlalchemy
+pymysql
+
+# ===== utils =====
+loguru
+python-dotenv

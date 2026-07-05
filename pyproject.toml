@@ -1,0 +1,24 @@
+[project]
+name = "general-video-langgraph"
+version = "0.1.0"
+description = "LangGraph backend for video highlight and commentary workflows"
+requires-python = ">=3.10"
+dependencies = [
+  "fastapi",
+  "uvicorn[standard]",
+  "langgraph",
+  "dashscope",
+  "litellm",
+  "pydantic",
+  "python-dotenv",
+  "loguru",
+  "requests",
+  "tenacity",
+  "pillow",
+  "imageio",
+  "pymediainfo",
+  "tos",
+]
+
+[tool.setuptools.packages.find]
+include = ["src*"]
