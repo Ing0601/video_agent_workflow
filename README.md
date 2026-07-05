@@ -191,29 +191,3 @@ python -m http.server 5173
 ```text
 http://127.0.0.1:5173/
 ```
-
-## 发布到公共仓库
-
-请确保以下内容未包含在仓库中：
-
-- 真实 API 密钥
-- 数据库连接字符串
-- 本地路径或个人信息
-- `.env` 文件
-
-推荐将实际密钥保存在本地 `.env` 中，并将 `.env` 添加到 `.gitignore`。
-
-## 说明
-
-本项目定位为一个“视频处理 + 文案生成”的轻量后端服务，提供结构化工作流触发、实时事件流显示和可扩展会话存储机制。
-
-优先级：
-
-```text
-P0: 安装依赖并启动服务，验证 /healthz 和 /commentary_sse stub 链路。
-P1: 用真实短视频验证 /highlight_sse。
-P2: 将 commentary 的 synthesize_tts_stub 替换为真实 TTSService。
-P3: 将 create_commentary_draft_stub 替换为真实 Jianying converter。
-P4: 增加 LangGraph conditional edge，实现 TTS 时长过长/过短后的文案重写闭环。
-P5: 增加直接输入视频的素材理解节点 analyze_video_material。
-```
